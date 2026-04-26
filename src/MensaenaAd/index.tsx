@@ -1317,7 +1317,156 @@ export const AppShowcaseScene: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const CTAScene:         React.FC = () => <Placeholder label="Phase 4b — CTA"       dur={T.cta.dur}/>;
+// Particles that fly toward the logo centre
+const CTA_PARTICLES = Array.from({length: 36}, (_, i) => {
+	const a = (i * 4_321_987 + 55_555) % 100_000;
+	const b = (i * 9_876_543 + 44_444) % 100_000;
+	const angle = (i / 36) * Math.PI * 2;
+	const startR = 400 + (a / 100_000) * 400;
+	return {
+		startX: 960 + Math.cos(angle) * startR,
+		startY: 420 + Math.sin(angle) * startR * 0.55,
+		delay: Math.floor((b / 100_000) * 60),
+	};
+});
+
+export const CTAScene: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.cta.dur, true);  // no exit fade — this is the last scene
+
+	// Particle convergence toward centre (0–80)
+	const convergence = interpolate(frame, [0, 80], [0, 1], {
+		extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin),
+	});
+
+	// Logo springs in at frame 70
+	const logoSpring = spring({fps, frame: Math.max(0, frame - 70), config: {damping: 14, stiffness: 100, mass: 1.0}});
+	const logoOp = interpolate(frame, [70, 95], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Wordmark
+	const wordOp = interpolate(frame, [88, 115], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Tagline
+	const tagOp = interpolate(frame, [120, 150], [0, 1], {extrapolateRight: 'clamp'});
+
+	// URL + button
+	const urlOp = interpolate(frame, [160, 190], [0, 1], {extrapolateRight: 'clamp'});
+	const btnScale = spring({fps, frame: Math.max(0, frame - 160), config: {damping: 13, stiffness: 180, mass: 0.8}});
+
+	// Continuous slow rotation of outer ring
+	const ringAngle = frame * 0.4;
+
+	// Glow pulse
+	const glowA = 0.25 + Math.sin(frame * 0.06) * 0.10;
+
+	return (
+		<AbsoluteFill style={{background: C.bgDeep, opacity: op}}>
+			{/* Deep space */}
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'radial-gradient(ellipse at 50% 42%, #091514 0%, #020607 65%)',
+			}} />
+
+			{/* Particle system */}
+			<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+				{CTA_PARTICLES.map((p, i) => {
+					const pProgress = interpolate(
+						frame, [p.delay, p.delay + 70], [0, 1],
+						{extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic)}
+					);
+					const px = p.startX + (960 - p.startX) * pProgress;
+					const py = p.startY + (420 - p.startY) * pProgress;
+					const pOp = pProgress < 0.85 ? pProgress * 0.8 : (1 - pProgress) * 5.3 * 0.8;
+					return (
+						<circle key={i} cx={px} cy={py}
+							r={2 + (i % 4) * 0.7}
+							fill={C.primary} opacity={Math.max(0, pOp)}/>
+					);
+				})}
+
+				{/* Rotating outer ring with dashes */}
+				{logoOp > 0 && (
+					<g transform={`translate(960, 420) rotate(${ringAngle})`}>
+						<circle cx="0" cy="0" r="150"
+							fill="none" stroke={C.primary}
+							strokeWidth="1" strokeDasharray="6 10"
+							opacity={logoOp * 0.3}/>
+					</g>
+				)}
+			</svg>
+
+			{/* Ambient glow */}
+			<TealGlow y="42%" a={glowA} />
+
+			{/* Logo + wordmark */}
+			<div style={{
+				position: 'absolute', inset: 0,
+				display: 'flex', flexDirection: 'column',
+				alignItems: 'center', justifyContent: 'center',
+				gap: 0,
+				transform: 'translateY(-60px)',
+			}}>
+				<div style={{
+					display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+					transform: `scale(${logoSpring})`, opacity: logoOp,
+				}}>
+					<MensaenaImg size={160} glow={logoOp} />
+					<div style={{
+						fontFamily: FONT, fontSize: 64, fontWeight: 900,
+						color: C.white, letterSpacing: '-0.035em',
+						opacity: wordOp,
+						textShadow: `0 0 100px rgba(30,170,166,${(logoOp * 0.5).toFixed(2)})`,
+					}}>mensaena</div>
+				</div>
+			</div>
+
+			{/* Tagline */}
+			<div style={{
+				position: 'absolute', top: 620, left: 0, right: 0,
+				textAlign: 'center', opacity: tagOp,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 28, fontWeight: 300,
+					color: 'rgba(255,255,255,0.62)',
+					letterSpacing: '0.06em',
+				}}>
+					Zusammen stark. Miteinander nah.
+				</div>
+			</div>
+
+			{/* URL + CTA button */}
+			<div style={{
+				position: 'absolute', bottom: 130, left: 0, right: 0,
+				display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
+				opacity: urlOp,
+			}}>
+				{/* Register button */}
+				<div style={{
+					fontFamily: FONT, fontSize: 24, fontWeight: 700,
+					color: C.white, letterSpacing: '0.02em',
+					background: `linear-gradient(90deg, ${C.primary}, ${C.primaryMid})`,
+					borderRadius: 999, padding: '18px 60px',
+					transform: `scale(${btnScale})`,
+					boxShadow: `0 0 60px rgba(30,170,166,0.45), 0 4px 30px rgba(0,0,0,0.6)`,
+				}}>
+					Jetzt kostenlos registrieren
+				</div>
+
+				{/* URL */}
+				<div style={{
+					fontFamily: FONT, fontSize: 19, fontWeight: 400,
+					color: 'rgba(255,255,255,0.40)',
+					letterSpacing: '0.04em',
+				}}>
+					mensaena.de
+				</div>
+			</div>
+
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 
 // ─────────────────────────────────────────────
 // ROOT — 2100 frames / 30 fps / 70 s
