@@ -1198,7 +1198,125 @@ export const FeaturesScene: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const AppShowcaseScene: React.FC = () => <Placeholder label="Phase 4a — App"       dur={T.appShowcase.dur}/>;
+export const AppShowcaseScene: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.appShowcase.dur);
+
+	// Phone springs in from below
+	const phoneSpring = spring({fps, frame, config: {damping: 16, stiffness: 100, mass: 1.1}});
+	const phoneY = interpolate(phoneSpring, [0, 1], [900, 540]);
+
+	// Screen transitions at fixed intervals
+	// 0–80: map, 80–160: chat, 160–280: notification, 280–310: fade out
+	const screenIndex = frame < 85 ? 0 : frame < 175 ? 1 : 2;
+	const screens: ScreenType[] = ['map', 'chat', 'notification'];
+
+	// Slight tilt rocking animation
+	const tilt = Math.sin(frame * 0.06) * 2.5;
+
+	// Screen swap flash
+	const swapFlash = (frame >= 82 && frame <= 90) || (frame >= 172 && frame <= 180);
+	const phoneOp = swapFlash ? 0.7 : 1;
+
+	// Floating labels next to phone
+	type LabelDef = {text: string; y: number; appear: number};
+	const labels: LabelDef[] = [
+		{text: 'Karte der Nachbarschaft',    y: 330, appear: 20},
+		{text: 'Direkter Chat',              y: 430, appear: 95},
+		{text: 'Sofort-Benachrichtigung',    y: 530, appear: 185},
+	];
+	const activeLabelIdx = screenIndex;
+
+	// Headline
+	const headOp = interpolate(frame, [10, 35], [0, 1], {extrapolateRight: 'clamp'});
+
+	// CTA pill at end
+	const pillOp = interpolate(frame, [240, 270], [0, 1], {extrapolateRight: 'clamp'});
+	const pillScale = spring({fps, frame: Math.max(0, frame - 240), config: {damping: 14, stiffness: 200, mass: 0.7}});
+
+	return (
+		<AbsoluteFill style={{background: C.bgDeep, opacity: op}}>
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'radial-gradient(ellipse at 50% 55%, #081612 0%, #020607 65%)',
+			}} />
+			<TealGlow a={0.15} />
+
+			{/* Headline */}
+			<div style={{
+				position: 'absolute', top: 100, left: 0, right: 0,
+				textAlign: 'center', opacity: headOp,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 48, fontWeight: 800,
+					color: C.white, letterSpacing: '-0.025em',
+				}}>
+					Die App für echte Nachbarschaft.
+				</div>
+			</div>
+
+			{/* Floating label pills (left of phone) */}
+			{labels.map((l, i) => {
+				const isActive = i === activeLabelIdx;
+				const labelOp = interpolate(frame, [l.appear, l.appear + 20], [0, 1], {extrapolateRight: 'clamp'});
+				return (
+					<div key={i} style={{
+						position: 'absolute', left: 340, top: l.y,
+						opacity: labelOp * (isActive ? 1 : 0.30),
+						transform: `translateX(${isActive ? 0 : -12}px)`,
+						transition: 'none',
+					}}>
+						<div style={{
+							display: 'inline-flex', alignItems: 'center', gap: 10,
+							background: isActive ? `rgba(30,170,166,0.15)` : 'rgba(255,255,255,0.05)',
+							border: `1.5px solid ${isActive ? C.primary : 'rgba(255,255,255,0.08)'}`,
+							borderRadius: 999, padding: '10px 22px',
+							fontFamily: FONT, fontSize: 18, fontWeight: isActive ? 700 : 400,
+							color: isActive ? C.primary : 'rgba(255,255,255,0.45)',
+						}}>
+							<div style={{
+								width: 8, height: 8, borderRadius: '50%',
+								background: isActive ? C.primary : 'rgba(255,255,255,0.25)',
+							}} />
+							{l.text}
+						</div>
+					</div>
+				);
+			})}
+
+			{/* Centred phone */}
+			<PhoneMockup
+				x={960} y={phoneY}
+				scale={1.25}
+				screen={screens[screenIndex]}
+				opacity={phoneOp}
+				rotateY={tilt}
+			/>
+
+			{/* CTA pill */}
+			{pillOp > 0 && (
+				<div style={{
+					position: 'absolute', bottom: 110, left: 0, right: 0,
+					display: 'flex', justifyContent: 'center',
+					opacity: pillOp, transform: `scale(${pillScale})`,
+				}}>
+					<div style={{
+						fontFamily: FONT, fontSize: 22, fontWeight: 700,
+						color: C.white, letterSpacing: '0.04em',
+						background: `linear-gradient(90deg, ${C.primary}, ${C.primaryMid})`,
+						borderRadius: 999, padding: '16px 48px',
+						boxShadow: `0 0 40px rgba(30,170,166,0.40)`,
+					}}>
+						Kostenlos herunterladen
+					</div>
+				</div>
+			)}
+
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const CTAScene:         React.FC = () => <Placeholder label="Phase 4b — CTA"       dur={T.cta.dur}/>;
 
 // ─────────────────────────────────────────────
