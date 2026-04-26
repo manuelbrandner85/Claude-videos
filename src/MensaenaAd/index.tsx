@@ -1077,7 +1077,127 @@ export const NetworkScene: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const FeaturesScene:    React.FC = () => <Placeholder label="Phase 3b — Features"  dur={T.features.dur}/>;
+const FEATURES = [
+	{icon: '📍', title: 'Nachbarschafts-Karte', sub: 'Finde Nachbarn in deiner Nähe', delay: 20},
+	{icon: '💬', title: 'Direkt-Chat', sub: 'Unkompliziert Hilfe anfragen', delay: 80},
+	{icon: '🔔', title: 'Sofort-Benachrichtigungen', sub: 'Nie mehr eine Anfrage verpassen', delay: 140},
+	{icon: '🤝', title: 'Hilfe-Netzwerk', sub: 'Gegenseitige Unterstützung im Alltag', delay: 200},
+	{icon: '🛡️', title: 'Sicher & Geprüft', sub: 'Verifizierte Community-Mitglieder', delay: 260},
+];
+
+export const FeaturesScene: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.features.dur);
+
+	// Left-side character — phone pose, occasional bob
+	const charBob = Math.sin(frame * 0.14) * 4;
+	const charOp = interpolate(frame, [0, 30], [0, 1], {extrapolateRight: 'clamp'});
+	const charX = interpolate(frame, [0, 40], [300, 440], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+
+	// Divider line draws in
+	const dividerH = interpolate(frame, [10, 55], [0, 680], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+
+	// Scene heading
+	const headOp = interpolate(frame, [15, 40], [0, 1], {extrapolateRight: 'clamp'});
+
+	return (
+		<AbsoluteFill style={{background: C.bg, opacity: op}}>
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'linear-gradient(135deg, #050b0b 0%, #071210 50%, #050b0b 100%)',
+			}} />
+			<TealGlow x="28%" y="52%" a={0.13} />
+
+			{/* ── Left: Character + ambient glow ── */}
+			<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+				{/* Ambient circle behind character */}
+				<circle cx={charX} cy="570" r={200}
+					fill="none" stroke={C.primary}
+					strokeWidth="1" opacity="0.10"/>
+				<circle cx={charX} cy="570" r={130}
+					fill={`rgba(30,170,166,0.05)`}/>
+
+				<Character
+					x={charX} y={870 + charBob} scale={1.15} pose="phone"
+					color="rgba(255,255,255,0.88)"
+					glowColor="rgba(30,170,166,0.35)"
+					opacity={charOp}
+				/>
+			</svg>
+
+			{/* Vertical divider */}
+			<div style={{
+				position: 'absolute', left: 750, top: 200,
+				width: 1.5, height: dividerH,
+				background: `linear-gradient(180deg, transparent, ${C.primary}, transparent)`,
+				opacity: 0.35,
+			}} />
+
+			{/* ── Right: Feature cards ── */}
+			<div style={{
+				position: 'absolute', left: 800, top: 130, right: 80,
+			}}>
+				{/* Heading */}
+				<div style={{
+					fontFamily: FONT, fontSize: 42, fontWeight: 800,
+					color: C.white, marginBottom: 36, opacity: headOp,
+					letterSpacing: '-0.02em',
+				}}>
+					Alles, was du brauchst.
+				</div>
+
+				{/* Feature cards */}
+				{FEATURES.map((f, i) => {
+					const cardOp = interpolate(frame, [f.delay, f.delay + 28], [0, 1], {extrapolateRight: 'clamp'});
+					const cardX = interpolate(frame, [f.delay, f.delay + 28], [40, 0], {
+						extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+					});
+					return (
+						<div key={i} style={{
+							display: 'flex', alignItems: 'center', gap: 24,
+							marginBottom: 28, opacity: cardOp,
+							transform: `translateX(${cardX}px)`,
+						}}>
+							{/* Icon bubble */}
+							<div style={{
+								width: 60, height: 60, flexShrink: 0,
+								borderRadius: 16,
+								background: `rgba(30,170,166,0.12)`,
+								border: `1.5px solid rgba(30,170,166,0.35)`,
+								display: 'flex', alignItems: 'center', justifyContent: 'center',
+								fontSize: 26,
+							}}>
+								{f.icon}
+							</div>
+							<div>
+								<div style={{
+									fontFamily: FONT, fontSize: 22, fontWeight: 700,
+									color: C.white, lineHeight: 1.2,
+								}}>
+									{f.title}
+								</div>
+								<div style={{
+									fontFamily: FONT, fontSize: 16, fontWeight: 300,
+									color: 'rgba(255,255,255,0.52)', marginTop: 4,
+								}}>
+									{f.sub}
+								</div>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+
+			<LogoBadge delay={10} />
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const AppShowcaseScene: React.FC = () => <Placeholder label="Phase 4a — App"       dur={T.appShowcase.dur}/>;
 export const CTAScene:         React.FC = () => <Placeholder label="Phase 4b — CTA"       dur={T.cta.dur}/>;
 
