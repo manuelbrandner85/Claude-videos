@@ -791,7 +791,138 @@ export const SceneB: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const SceneC:           React.FC = () => <Placeholder label="Phase 2c — Familie"   dur={T.sceneC.dur}/>;
+export const SceneC: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.sceneC.dur);
+
+	// SOS alert pulse — fast red glow that fades when helpers arrive
+	const sosPhase = Math.min(frame, 90);
+	const sosPulse = 0.5 + Math.sin(sosPhase * 0.35) * 0.45;
+	const sosOp = interpolate(frame, [0, 20, 130, 160], [0, 1, 1, 0], {extrapolateRight: 'clamp'});
+
+	// Familie: Mutter + Kind
+	const motherBob = Math.sin(frame * 0.18) * 3;
+	const childScale = 0.55;
+
+	// Phone with map screen — appears at frame 30
+	const phoneOp = interpolate(frame, [30, 60], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Helpers arrive from both sides at frame 110
+	const h1X = interpolate(frame, [110, 165], [-80, 220], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const h2X = interpolate(frame, [120, 175], [1250, 980], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const h3X = interpolate(frame, [130, 185], [1350, 1130], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const hOp = interpolate(frame, [110, 140], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Warmth wash — teal replaces red as helpers arrive
+	const warmA = interpolate(frame, [100, 180], [0, 0.18], {extrapolateRight: 'clamp'});
+
+	// Captions
+	const cap1Op = interpolate(frame, [10, 35], [0, 1], {extrapolateRight: 'clamp'});
+	const cap1Exit = interpolate(frame, [90, 115], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+	const cap2Op = interpolate(frame, [150, 175], [0, 1], {extrapolateRight: 'clamp'});
+
+	return (
+		<AbsoluteFill style={{background: C.bg, opacity: op}}>
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'linear-gradient(180deg, #060808 0%, #090f10 55%, #060808 100%)',
+			}} />
+
+			{/* SOS red ambient pulse */}
+			{sosOp > 0.01 && (
+				<div style={{
+					position: 'absolute', inset: 0,
+					background: `radial-gradient(ellipse at 50% 50%, rgba(200,40,40,${(sosPulse * 0.14 * sosOp).toFixed(3)}) 0%, transparent 55%)`,
+					pointerEvents: 'none',
+				}} />
+			)}
+
+			{/* Teal warmth wash when helpers arrive */}
+			<TealGlow a={warmA} />
+
+			{/* Ground */}
+			<div style={{
+				position: 'absolute', bottom: 225, left: 0, right: 0, height: 1,
+				background: 'linear-gradient(90deg, transparent, rgba(30,170,166,0.15), transparent)',
+			}} />
+
+			<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+				{/* SOS ring pulsing around family */}
+				{sosOp > 0.01 && (
+					<circle cx="600" cy="800"
+						r={50 + sosPulse * 40}
+						fill="none"
+						stroke={`rgba(220,60,60,${(sosPulse * 0.25 * sosOp).toFixed(3)})`}
+						strokeWidth="2"/>
+				)}
+
+				{/* Helpers arriving from sides */}
+				<Character x={h1X} y={835} scale={0.92} pose="help"
+					color="rgba(30,170,166,0.85)" glowColor="rgba(30,170,166,0.45)"
+					opacity={hOp}/>
+				<Character x={h2X} y={835} scale={0.90} pose="stand"
+					color="rgba(30,170,166,0.75)" glowColor="rgba(30,170,166,0.35)"
+					flip opacity={hOp}/>
+				<Character x={h3X} y={840} scale={0.84} pose="phone"
+					color="rgba(30,170,166,0.60)" glowColor="rgba(30,170,166,0.25)"
+					opacity={hOp * 0.8}/>
+
+				{/* Mother */}
+				<Character x={620} y={840 + motherBob} scale={1.02} pose="phone"
+					color="rgba(255,255,255,0.88)" glowColor="rgba(30,170,166,0.25)"
+				/>
+
+				{/* Child — smaller, beside mother */}
+				<Character x={710} y={860 + motherBob * 0.6} scale={childScale} pose="stand"
+					color="rgba(255,255,255,0.72)" glowColor="rgba(30,170,166,0.15)"
+				/>
+			</svg>
+
+			{/* Map phone — showing nearby helpers */}
+			{phoneOp > 0 && (
+				<PhoneMockup
+					x={1060} y={430}
+					scale={0.82}
+					screen="map"
+					opacity={phoneOp}
+					rotateY={-10}
+				/>
+			)}
+
+			{/* Caption 1 */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 155, opacity: cap1Op * cap1Exit,
+			}}>
+				<div style={{fontFamily: FONT, fontSize: 42, fontWeight: 700, color: C.white, lineHeight: 1.2}}>
+					Mia und ihre Tochter.
+				</div>
+				<div style={{fontFamily: FONT, fontSize: 26, fontWeight: 300, color: 'rgba(255,255,255,0.58)', marginTop: 8}}>
+					Unerwartete Krise. Kein Auto. Niemand erreichbar.
+				</div>
+			</div>
+
+			{/* Caption 2 */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 155, opacity: cap2Op,
+			}}>
+				<div style={{fontFamily: FONT, fontSize: 32, fontWeight: 300, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5}}>
+					Ihre Nachbarschaft reagiert —{' '}
+					<span style={{color: C.primary, fontWeight: 700}}>in Minuten</span>.
+				</div>
+			</div>
+
+			<LogoBadge delay={10} />
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const NetworkScene:     React.FC = () => <Placeholder label="Phase 3a — Netzwerk"  dur={T.network.dur}/>;
 export const FeaturesScene:    React.FC = () => <Placeholder label="Phase 3b — Features"  dur={T.features.dur}/>;
 export const AppShowcaseScene: React.FC = () => <Placeholder label="Phase 4a — App"       dur={T.appShowcase.dur}/>;
