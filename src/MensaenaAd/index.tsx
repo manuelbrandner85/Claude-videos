@@ -508,7 +508,139 @@ export const OpenerScene: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const SceneA:           React.FC = () => <Placeholder label="Phase 2a — Frau"      dur={T.sceneA.dur}/>;
+export const SceneA: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.sceneA.dur);
+
+	// Street/pavement background gradient
+	// Character enters from left, walks to centre
+	const charX = interpolate(frame, [0, 80], [-100, 480], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const charOp = interpolate(frame, [0, 30], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Slight walking bob
+	const bob = Math.sin(frame * 0.28) * 5;
+
+	// Phone slides in from right at frame 70
+	const phoneX = interpolate(frame, [70, 110], [1150, 900], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const phoneOp = interpolate(frame, [70, 100], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Helper character appears at frame 100 from right
+	const helperX = interpolate(frame, [100, 155], [1050, 700], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const helperOp = interpolate(frame, [100, 130], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Text captions
+	const cap1Op = interpolate(frame, [20, 45], [0, 1], {extrapolateRight: 'clamp'});
+	const cap1Exit = interpolate(frame, [85, 105], [1, 0], {extrapolateRight: 'clamp', extrapolateLeft: 'clamp'});
+	const cap2Op = interpolate(frame, [115, 140], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Connection arc between characters (appears at frame 140)
+	const arcOp = interpolate(frame, [140, 165], [0, 1], {extrapolateRight: 'clamp'});
+
+	return (
+		<AbsoluteFill style={{background: C.bg, opacity: op}}>
+			{/* Ambient gradient — warm street feel */}
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'linear-gradient(180deg, #050b0b 0%, #0a1a18 55%, #050b0b 100%)',
+			}} />
+			<TealGlow x="40%" y="60%" a={0.12} />
+
+			{/* Ground line */}
+			<div style={{
+				position: 'absolute', bottom: 260, left: 0, right: 0, height: 1,
+				background: 'linear-gradient(90deg, transparent, rgba(30,170,166,0.18), transparent)',
+			}} />
+
+			{/* Scene SVG layer */}
+			<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+				{/* Connection arc between woman and helper */}
+				{arcOp > 0 && (
+					<path
+						d={`M ${charX + 55} 750 Q ${(charX + 700) / 2} 560 ${helperX + 55} 750`}
+						fill="none" stroke={C.primary} strokeWidth="2"
+						strokeDasharray="8 6"
+						opacity={arcOp * 0.7}
+					/>
+				)}
+
+				{/* Older woman with shopping bags */}
+				<Character
+					x={charX} y={820 + bob}
+					scale={1.05} pose="carry"
+					color="rgba(255,255,255,0.85)"
+					glowColor="rgba(30,170,166,0.25)"
+					opacity={charOp}
+				/>
+
+				{/* Helper neighbour from right */}
+				<Character
+					x={helperX} y={820 + (Math.sin(frame * 0.28 + 1.2) * 4)}
+					scale={0.95} pose="help"
+					color="rgba(30,170,166,0.9)"
+					glowColor="rgba(30,170,166,0.45)"
+					flip
+					opacity={helperOp}
+				/>
+			</svg>
+
+			{/* Phone mockup — notification */}
+			{phoneOp > 0 && (
+				<PhoneMockup
+					x={phoneX} y={480}
+					scale={0.85}
+					screen="notification"
+					opacity={phoneOp}
+					rotateY={-8}
+				/>
+			)}
+
+			{/* Caption 1 */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 160,
+				opacity: cap1Op * cap1Exit,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 42, fontWeight: 700,
+					color: C.white, lineHeight: 1.2,
+					textShadow: '0 2px 24px rgba(0,0,0,0.8)',
+				}}>
+					Helga, 73.
+				</div>
+				<div style={{
+					fontFamily: FONT, fontSize: 26, fontWeight: 300,
+					color: 'rgba(255,255,255,0.60)', marginTop: 8,
+				}}>
+					Trägt jeden Montag die Einkäufe alleine nach Hause.
+				</div>
+			</div>
+
+			{/* Caption 2 — after helper arrives */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 160,
+				opacity: cap2Op,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 32, fontWeight: 300,
+					color: 'rgba(255,255,255,0.72)', lineHeight: 1.5,
+				}}>
+					Bis ihr Nachbar{' '}
+					<span style={{color: C.primary, fontWeight: 700}}>mensaena</span>
+					{' '}öffnete.
+				</div>
+			</div>
+
+			<LogoBadge delay={10} />
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const SceneB:           React.FC = () => <Placeholder label="Phase 2b — Mann"      dur={T.sceneB.dur}/>;
 export const SceneC:           React.FC = () => <Placeholder label="Phase 2c — Familie"   dur={T.sceneC.dur}/>;
 export const NetworkScene:     React.FC = () => <Placeholder label="Phase 3a — Netzwerk"  dur={T.network.dur}/>;
