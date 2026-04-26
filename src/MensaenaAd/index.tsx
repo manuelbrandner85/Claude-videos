@@ -641,7 +641,156 @@ export const SceneA: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const SceneB:           React.FC = () => <Placeholder label="Phase 2b — Mann"      dur={T.sceneB.dur}/>;
+// Moving boxes (rectangles) scattered on floor
+const BOXES = [
+	{x: 290, y: 860, w: 70, h: 60, rx: 4},
+	{x: 370, y: 872, w: 55, h: 50, rx: 4},
+	{x: 240, y: 875, w: 60, h: 45, rx: 4},
+	{x: 420, y: 865, w: 80, h: 55, rx: 4},
+];
+
+export const SceneB: React.FC = () => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const op = useFade(T.sceneB.dur);
+
+	// Man is already in scene, bending/struggling — slight sway
+	const manBob = Math.sin(frame * 0.22) * 6;
+
+	// Phone slides up from below at frame 40
+	const phoneY = interpolate(frame, [40, 80], [700, 420], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const phoneOp = interpolate(frame, [40, 70], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Two neighbours arrive from right at frame 90
+	const n1X = interpolate(frame, [90, 148], [1150, 780], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const n2X = interpolate(frame, [108, 165], [1250, 940], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	});
+	const n1Op = interpolate(frame, [90, 120], [0, 1], {extrapolateRight: 'clamp'});
+	const n2Op = interpolate(frame, [108, 138], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Man lifts box at frame 155 (hold pose = carry)
+	const manPose = frame < 155 ? 'stand' : 'carry';
+
+	// Captions
+	const cap1Op = interpolate(frame, [10, 35], [0, 1], {extrapolateRight: 'clamp'});
+	const cap1Exit = interpolate(frame, [80, 100], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+	const cap2Op = interpolate(frame, [130, 155], [0, 1], {extrapolateRight: 'clamp'});
+
+	// Sparkle dots around man when helpers arrive
+	const sparkOp = interpolate(frame, [90, 130], [0, 1], {extrapolateRight: 'clamp'});
+
+	return (
+		<AbsoluteFill style={{background: C.bg, opacity: op}}>
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'linear-gradient(180deg, #050b0b 0%, #081510 60%, #050b0b 100%)',
+			}} />
+			<TealGlow x="55%" y="55%" a={0.10} />
+
+			{/* Ground line */}
+			<div style={{
+				position: 'absolute', bottom: 210, left: 0, right: 0, height: 1,
+				background: 'linear-gradient(90deg, transparent, rgba(30,170,166,0.15), transparent)',
+			}} />
+
+			<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+				{/* Moving boxes on floor */}
+				{BOXES.map((b, i) => (
+					<g key={i}>
+						<rect x={b.x} y={b.y} width={b.w} height={b.h} rx={b.rx}
+							fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)"
+							strokeWidth="1.5"/>
+						{/* Box tape line */}
+						<line x1={b.x} y1={b.y + b.h / 2} x2={b.x + b.w} y2={b.y + b.h / 2}
+							stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+					</g>
+				))}
+
+				{/* Sparkle halo around the man when helpers come */}
+				{sparkOp > 0 && Array.from({length: 8}, (_, i) => {
+					const angle = (i / 8) * Math.PI * 2 + frame * 0.04;
+					const r = 80 + Math.sin(frame * 0.1 + i) * 12;
+					return (
+						<circle key={i}
+							cx={560 + Math.cos(angle) * r}
+							cy={780 + Math.sin(angle) * r * 0.5}
+							r={2 + (i % 3)}
+							fill={C.primary} opacity={sparkOp * 0.55}/>
+					);
+				})}
+
+				{/* Struggling man with boxes */}
+				<Character
+					x={560} y={880 + manBob}
+					scale={1.08} pose={manPose as 'stand' | 'carry'}
+					color="rgba(255,255,255,0.88)"
+					glowColor="rgba(30,170,166,0.22)"
+				/>
+
+				{/* Neighbour 1 — teal, helpful */}
+				<Character
+					x={n1X} y={880 + (Math.sin(frame * 0.24 + 0.5) * 5)}
+					scale={0.96} pose="help"
+					color="rgba(30,170,166,0.88)"
+					glowColor="rgba(30,170,166,0.5)"
+					flip
+					opacity={n1Op}
+				/>
+
+				{/* Neighbour 2 — slightly lighter */}
+				<Character
+					x={n2X} y={880 + (Math.sin(frame * 0.26 + 1.1) * 5)}
+					scale={0.90} pose="stand"
+					color="rgba(30,170,166,0.65)"
+					glowColor="rgba(30,170,166,0.3)"
+					opacity={n2Op}
+				/>
+			</svg>
+
+			{/* Chat phone mockup */}
+			{phoneOp > 0 && (
+				<PhoneMockup
+					x={980} y={phoneY}
+					scale={0.80}
+					screen="chat"
+					opacity={phoneOp}
+					rotateY={7}
+				/>
+			)}
+
+			{/* Caption 1 */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 155, opacity: cap1Op * cap1Exit,
+			}}>
+				<div style={{fontFamily: FONT, fontSize: 42, fontWeight: 700, color: C.white, lineHeight: 1.2}}>
+					Luca, 28. Neu in der Stadt.
+				</div>
+				<div style={{fontFamily: FONT, fontSize: 26, fontWeight: 300, color: 'rgba(255,255,255,0.58)', marginTop: 8}}>
+					Alleine mit 30 Umzugskartons und keiner Ahnung.
+				</div>
+			</div>
+
+			{/* Caption 2 */}
+			<div style={{
+				position: 'absolute', left: 100, bottom: 155, opacity: cap2Op,
+			}}>
+				<div style={{fontFamily: FONT, fontSize: 32, fontWeight: 300, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5}}>
+					2 Nachrichten auf{' '}
+					<span style={{color: C.primary, fontWeight: 700}}>mensaena</span>
+					{' '}— und er ist nicht mehr allein.
+				</div>
+			</div>
+
+			<LogoBadge delay={10} />
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const SceneC:           React.FC = () => <Placeholder label="Phase 2c — Familie"   dur={T.sceneC.dur}/>;
 export const NetworkScene:     React.FC = () => <Placeholder label="Phase 3a — Netzwerk"  dur={T.network.dur}/>;
 export const FeaturesScene:    React.FC = () => <Placeholder label="Phase 3b — Features"  dur={T.features.dur}/>;
