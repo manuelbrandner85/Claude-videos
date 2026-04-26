@@ -923,7 +923,160 @@ export const SceneC: React.FC = () => {
 		</AbsoluteFill>
 	);
 };
-export const NetworkScene:     React.FC = () => <Placeholder label="Phase 3a — Netzwerk"  dur={T.network.dur}/>;
+// Network nodes — deterministic positions spread across screen
+const NET_NODES = Array.from({length: 28}, (_, i) => {
+	const a = (i * 2_345_678 + 11_111) % 100_000;
+	const b = (i * 8_765_432 + 22_222) % 100_000;
+	const c = (i * 5_678_901 + 33_333) % 100_000;
+	return {
+		x: 200 + (a / 100_000) * 1520,
+		y: 180 + (b / 100_000) * 720,
+		r: 8 + (c / 100_000) * 10,
+		delay: Math.floor((i / 28) * 180),   // staggered appearance
+	};
+});
+
+// Edges between nodes that are close enough
+const NET_EDGES = NET_NODES.flatMap((a, i) =>
+	NET_NODES.slice(i + 1).map((b, j) => {
+		const d = Math.hypot(a.x - b.x, a.y - b.y);
+		return d < 340 ? {a, b, d, delay: Math.max(a.delay, b.delay) + 15} : null;
+	}).filter(Boolean)
+) as {a: typeof NET_NODES[0]; b: typeof NET_NODES[0]; d: number; delay: number}[];
+
+export const NetworkScene: React.FC = () => {
+	const frame = useCurrentFrame();
+	const op = useFade(T.network.dur);
+
+	// Overall scale pulse (network "breathing")
+	const breathe = 1 + Math.sin(frame * 0.05) * 0.012;
+
+	// Counter animate — numbers counting up
+	const countEnd = 12_400;
+	const countFrame = Math.min(frame, 260);
+	const count = Math.round(interpolate(countFrame, [0, 260], [0, countEnd], {
+		extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic),
+	}));
+
+	// Caption timings
+	const headOp = interpolate(frame, [30, 60], [0, 1], {extrapolateRight: 'clamp'});
+	const statOp = interpolate(frame, [100, 130], [0, 1], {extrapolateRight: 'clamp'});
+	const cta1Op = interpolate(frame, [200, 230], [0, 1], {extrapolateRight: 'clamp'});
+
+	return (
+		<AbsoluteFill style={{background: C.bgDeep, opacity: op}}>
+			{/* Deep space gradient */}
+			<div style={{
+				position: 'absolute', inset: 0,
+				background: 'radial-gradient(ellipse at 50% 50%, #071210 0%, #020607 70%)',
+			}} />
+
+			{/* Network graph */}
+			<div style={{
+				position: 'absolute', inset: 0,
+				transform: `scale(${breathe})`, transformOrigin: 'center center',
+			}}>
+				<svg width="1920" height="1080" style={{position: 'absolute', inset: 0}}>
+					{/* Edges */}
+					{NET_EDGES.map((e, i) => {
+						const edgeOp = interpolate(frame, [e.delay, e.delay + 22], [0, 1], {extrapolateRight: 'clamp'});
+						if (edgeOp <= 0) return null;
+						return (
+							<line key={i}
+								x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y}
+								stroke={C.primary}
+								strokeWidth={0.8}
+								opacity={edgeOp * (0.18 + (1 - e.d / 340) * 0.25)}
+							/>
+						);
+					})}
+
+					{/* Nodes */}
+					{NET_NODES.map((n, i) => {
+						const nOp = interpolate(frame, [n.delay, n.delay + 18], [0, 1], {extrapolateRight: 'clamp'});
+						if (nOp <= 0) return null;
+						const pulse = 1 + Math.sin(frame * 0.07 + i * 0.9) * 0.15;
+						return (
+							<g key={i} opacity={nOp}>
+								{/* Outer glow ring */}
+								<circle cx={n.x} cy={n.y} r={n.r * pulse * 1.8}
+									fill="none" stroke={C.primary}
+									strokeWidth="1" opacity={0.25}/>
+								{/* Core dot */}
+								<circle cx={n.x} cy={n.y} r={n.r * pulse}
+									fill={C.primary} opacity={0.85}/>
+								{/* Bright centre */}
+								<circle cx={n.x} cy={n.y} r={n.r * 0.45}
+									fill="white" opacity={0.7}/>
+							</g>
+						);
+					})}
+
+					{/* Central hero node — pulsing large */}
+					<circle cx="960" cy="540" r={28 + Math.sin(frame * 0.08) * 6}
+						fill="none" stroke={C.primary} strokeWidth="2" opacity="0.4"/>
+					<circle cx="960" cy="540" r={18}
+						fill={C.primary} opacity="0.95"/>
+					<circle cx="960" cy="540" r={8}
+						fill="white" opacity="0.9"/>
+				</svg>
+			</div>
+
+			{/* Teal ambient glow */}
+			<TealGlow a={0.16} />
+
+			{/* Headline */}
+			<div style={{
+				position: 'absolute', top: 120, left: 0, right: 0,
+				textAlign: 'center', opacity: headOp,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 52, fontWeight: 800,
+					color: C.white, letterSpacing: '-0.025em',
+					textShadow: '0 2px 40px rgba(0,0,0,0.9)',
+				}}>
+					Deine Nachbarschaft. Vernetzt.
+				</div>
+			</div>
+
+			{/* Animated stat */}
+			<div style={{
+				position: 'absolute', bottom: 240, left: 0, right: 0,
+				textAlign: 'center', opacity: statOp,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 88, fontWeight: 900,
+					color: C.primary, letterSpacing: '-0.04em',
+					textShadow: `0 0 80px rgba(30,170,166,0.45)`,
+				}}>
+					{count.toLocaleString('de-DE')}
+				</div>
+				<div style={{
+					fontFamily: FONT, fontSize: 22, fontWeight: 300,
+					color: 'rgba(255,255,255,0.55)', marginTop: 8, letterSpacing: '0.06em',
+					textTransform: 'uppercase',
+				}}>
+					Nachbarn helfen einander täglich
+				</div>
+			</div>
+
+			{/* Subtext */}
+			<div style={{
+				position: 'absolute', bottom: 145, left: 0, right: 0,
+				textAlign: 'center', opacity: cta1Op,
+			}}>
+				<div style={{
+					fontFamily: FONT, fontSize: 20, fontWeight: 300,
+					color: 'rgba(255,255,255,0.40)', letterSpacing: '0.04em',
+				}}>
+					In 200+ deutschen Städten und Gemeinden
+				</div>
+			</div>
+
+			<Vignette />
+		</AbsoluteFill>
+	);
+};
 export const FeaturesScene:    React.FC = () => <Placeholder label="Phase 3b — Features"  dur={T.features.dur}/>;
 export const AppShowcaseScene: React.FC = () => <Placeholder label="Phase 4a — App"       dur={T.appShowcase.dur}/>;
 export const CTAScene:         React.FC = () => <Placeholder label="Phase 4b — CTA"       dur={T.cta.dur}/>;
