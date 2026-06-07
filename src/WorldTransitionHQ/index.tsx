@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useRef, useLayoutEffect} from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
 import {ThreeCanvas} from '@remotion/three';
 import {EffectComposer, Bloom} from '@react-three/postprocessing';
@@ -69,19 +69,15 @@ const AuroraRibbon: React.FC<{
 	ampX: number; ampZ: number; speed: number; phase: number;
 }> = ({frame, opacity, tex, color, baseX, baseZ, height, width, ampX, ampZ, speed, phase}) => {
 	const N = 30;
+	const geoRef = useRef<THREE.BufferGeometry>(null);
+	// statische Buffer einmalig anlegen (Position wird pro Frame in-place geupdatet)
 	const {positions, uvs, indices} = useMemo(() => {
 		const pos = new Float32Array((N + 1) * 2 * 3);
 		const uv = new Float32Array((N + 1) * 2 * 2);
 		const idx: number[] = [];
-		const t = frame * 0.02 * speed + phase;
 		for (let j = 0; j <= N; j++) {
 			const v = j / N;
-			const y = (v - 0.5) * height;
-			const cx = baseX + Math.sin(v * 3.2 + t) * ampX + Math.sin(v * 7 + t * 0.6) * ampX * 0.35;
-			const cz = baseZ + Math.cos(v * 2.6 + t * 0.8) * ampZ + Math.sin(v * 5 + t) * ampZ * 0.4;
 			const k = j * 2;
-			pos[k * 3] = cx - width / 2;     pos[k * 3 + 1] = y; pos[k * 3 + 2] = cz;
-			pos[(k + 1) * 3] = cx + width / 2; pos[(k + 1) * 3 + 1] = y; pos[(k + 1) * 3 + 2] = cz;
 			uv[k * 2] = 0; uv[k * 2 + 1] = v;
 			uv[(k + 1) * 2] = 1; uv[(k + 1) * 2 + 1] = v;
 			if (j < N) {
@@ -90,11 +86,27 @@ const AuroraRibbon: React.FC<{
 			}
 		}
 		return {positions: pos, uvs: uv, indices: new Uint16Array(idx)};
-	}, [frame, baseX, baseZ, height, width, ampX, ampZ, speed, phase]);
+	}, []);
+
+	// Vertex-Positionen pro Frame in-place aktualisieren (kein Remount/Realloc)
+	useLayoutEffect(() => {
+		const t = frame * 0.02 * speed + phase;
+		for (let j = 0; j <= N; j++) {
+			const v = j / N;
+			const y = (v - 0.5) * height;
+			const cx = baseX + Math.sin(v * 3.2 + t) * ampX + Math.sin(v * 7 + t * 0.6) * ampX * 0.35;
+			const cz = baseZ + Math.cos(v * 2.6 + t * 0.8) * ampZ + Math.sin(v * 5 + t) * ampZ * 0.4;
+			const k = j * 2;
+			positions[k * 3] = cx - width / 2;     positions[k * 3 + 1] = y; positions[k * 3 + 2] = cz;
+			positions[(k + 1) * 3] = cx + width / 2; positions[(k + 1) * 3 + 1] = y; positions[(k + 1) * 3 + 2] = cz;
+		}
+		const g = geoRef.current;
+		if (g) (g.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+	});
 
 	return (
-		<mesh key={frame}>
-			<bufferGeometry>
+		<mesh>
+			<bufferGeometry ref={geoRef}>
 				<bufferAttribute attach="attributes-position" args={[positions, 3]} />
 				<bufferAttribute attach="attributes-uv" args={[uvs, 2]} />
 				<bufferAttribute attach="index" args={[indices, 1]} />
@@ -207,16 +219,18 @@ const UrsprungHQ: React.FC<{frame: number; opacity: number; centerZ: number; dot
 			return {a, r, y: (rnd() - 0.5) * 6, ph: rnd() * 10};
 		});
 	}, []);
-	const filPos = useMemo(() => {
-		const arr = new Float32Array(filaments.length * 3);
+	const filPos = useMemo(() => new Float32Array(filaments.length * 3), [filaments]);
+	const filRef = useRef<THREE.BufferGeometry>(null);
+	useLayoutEffect(() => {
 		filaments.forEach((f, i) => {
 			const spin = f.a + frame * 0.012 + (1 / (f.r * 0.1));
-			arr[i * 3] = Math.cos(spin) * f.r;
-			arr[i * 3 + 1] = f.y + Math.sin(frame * 0.03 + f.ph) * 1.2;
-			arr[i * 3 + 2] = centerZ + Math.sin(spin) * f.r;
+			filPos[i * 3] = Math.cos(spin) * f.r;
+			filPos[i * 3 + 1] = f.y + Math.sin(frame * 0.03 + f.ph) * 1.2;
+			filPos[i * 3 + 2] = centerZ + Math.sin(spin) * f.r;
 		});
-		return arr;
-	}, [filaments, frame, centerZ]);
+		const g = filRef.current;
+		if (g) (g.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+	});
 	const corePulse = 1 + Math.sin(frame * 0.06) * 0.10;
 	return (
 		<group>
@@ -239,8 +253,8 @@ const UrsprungHQ: React.FC<{frame: number; opacity: number; centerZ: number; dot
 				</mesh>
 			))}
 			{/* Akkretions-Filamente (in den Kern strömend) */}
-			<points key={`fil${frame}`}>
-				<bufferGeometry>
+			<points>
+				<bufferGeometry ref={filRef}>
 					<bufferAttribute attach="attributes-position" args={[filPos, 3]} />
 				</bufferGeometry>
 				<pointsMaterial size={0.5} map={dot} color={pal.secondary} transparent opacity={opacity * 0.9}

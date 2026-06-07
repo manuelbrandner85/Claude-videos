@@ -8,10 +8,10 @@ render_one () {
   local FROM="$1" TO="$2"
   local RAW="out/hq/_raw_${FROM}_to_${TO}.mp4"
   local FINAL="out/hq/transition_${FROM}_to_${TO}.mp4"
-  echo ">>> RENDER ${FROM} -> ${TO} (1.5x supersample)"
+  echo ">>> RENDER ${FROM} -> ${TO} (native 720x1280)"
   npx remotion render WorldTransitionHQ "$RAW" \
     --props="{\"from\":\"${FROM}\",\"to\":\"${TO}\"}" \
-    --scale=1.5 --pixel-format=yuv420p --codec=h264
+    --concurrency=4 --pixel-format=yuv420p --codec=h264
   echo ">>> GRADE ${FROM} -> ${TO}"
   bash "$GRADE" "$RAW" "$FINAL"
   rm -f "$RAW"
