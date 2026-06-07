@@ -11,7 +11,7 @@ render_one () {
   echo ">>> RENDER ${FROM} -> ${TO} (native 720x1280)"
   npx remotion render WorldTransitionHQ "$RAW" \
     --props="{\"from\":\"${FROM}\",\"to\":\"${TO}\"}" \
-    --concurrency=4 --pixel-format=yuv420p --codec=h264
+    --pixel-format=yuv420p --codec=h264
   echo ">>> GRADE ${FROM} -> ${TO}"
   bash "$GRADE" "$RAW" "$FINAL"
   rm -f "$RAW"
