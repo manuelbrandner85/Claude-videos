@@ -1,0 +1,99 @@
+diff --git a/lib/animations/world_transition_video.dart b/lib/animations/world_transition_video.dart
+index 3ca241f..c45af96 100644
+--- a/lib/animations/world_transition_video.dart
++++ b/lib/animations/world_transition_video.dart
+@@ -23,6 +23,11 @@ class WorldTransitionVideo extends StatefulWidget {
+   /// Ziel-Welt: 'materie', 'energie', 'vorhang', 'ursprung'
+   final String targetWorld;
+ 
++  /// Quell-Welt: 'materie', 'energie', 'vorhang', 'ursprung' (optional).
++  /// Wenn gesetzt und ein gerichtetes Video-Asset existiert (Ring-Übergang),
++  /// wird das exakte from→to-Video abgespielt.
++  final String sourceWorld;
++
+   // ── Legacy-API (Rückwärtskompatibilität für alten 2-Welten-Code) ──
+   /// @deprecated — Benutze [targetWorld] stattdessen.
+   final bool? isMaterieToEnergie;
+@@ -31,6 +36,7 @@ class WorldTransitionVideo extends StatefulWidget {
+     super.key,
+     required this.targetScreen,
+     this.targetWorld = '',
++    this.sourceWorld = '',
+     this.isMaterieToEnergie,
+   });
+ 
+@@ -59,17 +65,42 @@ class _WorldTransitionVideoState extends State<WorldTransitionVideo>
+     return 'materie';
+   }
+ 
++  /// Gerichtete Übergangs-Videos die als Asset existieren (Ring-Reihenfolge:
++  /// Materie → Energie → Vorhang → Ursprung → Materie, in beide Richtungen).
++  static const Set<String> _availableDirectedVideos = {
++    'materie_to_energie',
++    'energie_to_materie',
++    'energie_to_vorhang',
++    'vorhang_to_energie',
++    'vorhang_to_ursprung',
++    'ursprung_to_vorhang',
++    'ursprung_to_materie',
++    'materie_to_ursprung',
++  };
++
+   /// Video-Asset-Pfad ODER null wenn programmatische Animation nötig.
+   String? get _videoAssetPath {
+     final target = _effectiveTargetWorld;
+-    // Nur Materie ↔ Energie haben echte Video-Assets
++    final source = widget.sourceWorld;
++
++    // 1) Wenn Quell-Welt bekannt: exaktes gerichtetes from→to-Video bevorzugen.
++    if (source.isNotEmpty && source != target) {
++      final key = '${source}_to_$target';
++      if (_availableDirectedVideos.contains(key)) {
++        return 'assets/videos/transition_$key.mp4';
++      }
++    }
++
++    // 2) Fallback ohne bekannte Quell-Welt: Target-basiert (Legacy Materie ↔ Energie).
+     if (target == 'energie') {
+       return 'assets/videos/transition_materie_to_energie.mp4';
+     }
+     if (target == 'materie') {
+       return 'assets/videos/transition_energie_to_materie.mp4';
+     }
+-    return null; // Vorhang, Ursprung → programmatisch
++
++    // 3) Kein passendes Video (z.B. Nicht-Ring-Paar) → programmatische Animation.
++    return null;
+   }
+ 
+   /// Welt-Farb-Palette für die Ziel-Welt.
+diff --git a/lib/widgets/world_switcher_pill.dart b/lib/widgets/world_switcher_pill.dart
+index 95bad91..aa79d6b 100644
+--- a/lib/widgets/world_switcher_pill.dart
++++ b/lib/widgets/world_switcher_pill.dart
+@@ -54,6 +54,7 @@ class WorldSwitcherPill extends StatelessWidget {
+         builder: (_) => WorldTransitionVideo(
+           targetScreen: screen,
+           targetWorld: world,
++          sourceWorld: currentWorld,
+         ),
+       ),
+     );
+diff --git a/pubspec.yaml b/pubspec.yaml
+index 4b34b81..a34da00 100644
+--- a/pubspec.yaml
++++ b/pubspec.yaml
+@@ -164,6 +164,13 @@ flutter:
+     - assets/videos/weltenbibliothek_intro.mp4
+     - assets/videos/transition_materie_to_energie.mp4
+     - assets/videos/transition_energie_to_materie.mp4
++    # 🔄 Ring-Übergänge: Materie → Energie → Vorhang → Ursprung → Materie
++    - assets/videos/transition_energie_to_vorhang.mp4
++    - assets/videos/transition_vorhang_to_energie.mp4
++    - assets/videos/transition_vorhang_to_ursprung.mp4
++    - assets/videos/transition_ursprung_to_vorhang.mp4
++    - assets/videos/transition_ursprung_to_materie.mp4
++    - assets/videos/transition_materie_to_ursprung.mp4
+ 
+   # An image asset can refer to one or more resolution-specific "variants", see
+   # https://flutter.dev/to/resolution-aware-images
