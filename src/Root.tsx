@@ -3,6 +3,10 @@ import {Composition} from 'remotion';
 import {HalloWelt} from './HalloWelt';
 import {MensaenaAd} from './MensaenaAd';
 import {WorldTransition} from './WorldTransition';
+import {GLTest} from './GLTest';
+import {BloomTest} from './GLTest/bloom';
+import {WorldTransition3D} from './WorldTransition3D';
+import {WorldTransitionHQ} from './WorldTransitionHQ';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -31,6 +35,40 @@ export const RemotionRoot: React.FC = () => {
 				width={720}
 				height={1280}
 				defaultProps={{from: 'materie' as const, to: 'ursprung' as const}}
+			/>
+			<Composition
+				id="GLTest"
+				component={GLTest}
+				durationInFrames={30}
+				fps={24}
+				width={640}
+				height={640}
+			/>
+			<Composition
+				id="BloomTest"
+				component={BloomTest}
+				durationInFrames={30}
+				fps={24}
+				width={640}
+				height={640}
+			/>
+			<Composition
+				id="WorldTransition3D"
+				component={WorldTransition3D}
+				durationInFrames={192}
+				fps={24}
+				width={720}
+				height={1280}
+				defaultProps={{from: 'materie' as const, to: 'ursprung' as const}}
+			/>
+			<Composition
+				id="WorldTransitionHQ"
+				component={WorldTransitionHQ}
+				durationInFrames={192}
+				fps={24}
+				width={720}
+				height={1280}
+				defaultProps={{from: 'vorhang' as const, to: 'ursprung' as const}}
 			/>
 		</>
 	);
